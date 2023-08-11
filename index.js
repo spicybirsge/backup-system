@@ -47,4 +47,4 @@ async function backup() {
   mongoose.connection.close();
 }
 
-backup();
+cron.schedule('30 * * * *',backup);
