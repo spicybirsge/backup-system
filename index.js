@@ -8,7 +8,7 @@ const GIT_TOKEN = process.env.TOKEN;
 const GIT_REPO = 'spicybirsge/backups';
 
 async function backup() {
-  console.log("Starting backup");
+  console.log(`${new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')}: Starting backup`);
   await mongoose.connect(MONGO_URL);
 
   const backupName = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, ''); 
@@ -21,11 +21,8 @@ async function backup() {
     // Use the MongoDB driver to fetch data directly from the collection
     const collectionData = await mongoose.connection.db.collection(collectionName).find().toArray();
 
-    const dump = {
-      db: mongoose.connection.name,
-      collection: collectionName,
-      data: collectionData
-    };
+    const dump = collectionData;
+   
 
     const backupJSON = Buffer.from(JSON.stringify(dump)).toString('base64');
 
@@ -34,7 +31,7 @@ async function backup() {
     await octokit.repos.createOrUpdateFileContents({
       owner: GIT_REPO.split('/')[0], 
       repo: GIT_REPO.split('/')[1],
-      path: `backups/${collectionName}/${backupName}_${collectionName}.json`,
+      path: `backups/${mongoose.connection.name}/${collectionName}/${backupName}_${collectionName}.json`,
       message: `Backup ${backupName} - ${collectionName}`,  
       content: backupJSON
     });
@@ -47,4 +44,7 @@ async function backup() {
   mongoose.connection.close();
 }
 
-cron.schedule('30 * * * *',backup);
+backup().then(() => {
+ 
+  cron.schedule('*/30 * * * *', backup);
+});
